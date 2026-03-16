@@ -1,0 +1,18 @@
+[1] New Thread with ID t00 is started.
+[1] Thread t00 is in its critical section
+[1] Thread with ID t00 is finished.
+[2] New Thread with ID t03 is started.
+[2] Thread t03 is in its critical section
+[2] Thread with ID t03 is finished.
+[3] New Thread with ID t07 is started.
+[4] New Thread with ID t05 is started.
+[5] New Thread with ID t02 is started.
+[5] Thread t02 is in its critical section
+[5] Thread with ID t02 is finished.
+[5] Thread t07 is in its critical section
+[5] Thread with ID t07 is finished.
+[20] New Thread with ID t01 is started.
+[20] Thread t05 is in its critical section
+[20] Thread with ID t05 is finished.
+[20] Thread t01 is in its critical section
+[20] Thread with ID t01 is finished.

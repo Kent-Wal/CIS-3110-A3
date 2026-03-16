@@ -1,0 +1,14 @@
+$ indicates a command line prompt. Do not copy it when running the following material.
+
+To compile, in the same folder where your .c file is, run the following command
+
+$ make
+
+If successful (i.e. gcc didn't complain) you should now have a file named Assignment_3 (with no file extension). To run/execute it properly, use either of the two options below. In first case, the output will be stored to the file sample_out.txt while in the second case it will be displayed to the console: 
+
+$./Assignment_3 sample3_in.txt > sample_out.txt
+
+OR
+
+$./Assignment_3 sample3_in.txt
+

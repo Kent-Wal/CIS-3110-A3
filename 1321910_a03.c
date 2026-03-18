@@ -43,6 +43,7 @@ bool all_started = false;   //true if all threads have started, false otherwise
 
 pthread_mutex_t state_lock = PTHREAD_MUTEX_INITIALIZER; // protects the globals above
 pthread_cond_t start_cond = PTHREAD_COND_INITIALIZER;   // signals when a thread has logged start
+pthread_cond_t finish_cond = PTHREAD_COND_INITIALIZER;  // signals when a thread has left critical section
 
 int main(int argc, char *argv[]){
 	Thread* threads = NULL;
@@ -84,31 +85,50 @@ int main(int argc, char *argv[]){
 			usleep(10000); // sleep for 10ms to avoid busy waiting
 		}
 
-		pthread_create(&thread->handle, NULL, threadRun, thread);
-
-		//mark all_started after creating the last thread and kick a stranded waiter if needed
 		if (i == threadCount - 1) {
 			int wake_even = 0;
 			int wake_odd = 0;
+			int target_even_remaining = -1;
+			int target_odd_remaining = -1;
 
 			pthread_mutex_lock(&state_lock);
-			while (thread->state == 0) {
-				pthread_cond_wait(&start_cond, &state_lock);
-			}
 			all_started = true;
 
-			if (odd_remaining == 0 && even_remaining > 0 && even_waiting > 0) {
-				wake_even = 1;
-			} else if (even_remaining == 0 && odd_remaining > 0 && odd_waiting > 0) {
+			if (odd_waiting > 0 && even_waiting == 0 && odd_remaining > 0) {
 				wake_odd = 1;
+				target_odd_remaining = odd_remaining - 1;
+			} else if (even_waiting > 0 && odd_waiting == 0 && even_remaining > 0) {
+				wake_even = 1;
+				target_even_remaining = even_remaining - 1;
 			}
 			pthread_mutex_unlock(&state_lock);
 
 			if (wake_even) {
 				sem_post(&even_sem);
+				pthread_mutex_lock(&state_lock);
+				while (even_remaining > target_even_remaining) {
+					pthread_cond_wait(&finish_cond, &state_lock);
+				}
+				pthread_mutex_unlock(&state_lock);
 			} else if (wake_odd) {
 				sem_post(&odd_sem);
+				pthread_mutex_lock(&state_lock);
+				while (odd_remaining > target_odd_remaining) {
+					pthread_cond_wait(&finish_cond, &state_lock);
+				}
+				pthread_mutex_unlock(&state_lock);
 			}
+		}
+
+		pthread_create(&thread->handle, NULL, threadRun, thread);
+
+		//wait until the last thread logs its start before continuing
+		if (i == threadCount - 1) {
+			pthread_mutex_lock(&state_lock);
+			while (thread->state == 0) {
+				pthread_cond_wait(&start_cond, &state_lock);
+			}
+			pthread_mutex_unlock(&state_lock);
 		}
 	}
 
@@ -123,6 +143,7 @@ int main(int argc, char *argv[]){
 	sem_destroy(&mutex);
 	pthread_mutex_destroy(&state_lock);
 	pthread_cond_destroy(&start_cond);
+	pthread_cond_destroy(&finish_cond);
 
 	//free threads array allocated in readFile() before exiting
 	free(threads);
@@ -267,6 +288,7 @@ void* threadRun(void* t){
     last_parity = my_parity;
     if (my_parity == 0) even_remaining--;
     else odd_remaining--;
+	pthread_cond_broadcast(&finish_cond);
 
     int opposite_remaining = (my_parity == 0) ? odd_remaining : even_remaining;
     int same_remaining = (my_parity == 0) ? even_remaining : odd_remaining;
